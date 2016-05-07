@@ -1,0 +1,12 @@
+sqlpusher
+*.json
+*.xml
+*.out
+*.cs
+*.raw
+*.zip
+*.txt
+test/*.*
+*.csv
+
+
