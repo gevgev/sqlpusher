@@ -96,6 +96,11 @@ func init() {
 
 }
 
+type SqlStatement struct {
+	no  int
+	sql string
+}
+
 func main() {
 	records := ReadSvcFile(cvsFile)
 
@@ -116,16 +121,31 @@ func main() {
 
 	fmt.Printf("Succesffully connected to %v - %v DB\n", server, database)
 
-	statementsToExecute := prepareStatements(records)
+	executeStatements(prepareStatements(records), db)
 
-	if !silent {
-		fmt.Println("Generated: ", sqlStatement)
-	}
-
-	executeStatements(statementsToExecute)
-
+	fmt.Println("Done")
 }
 
+func executeStatements(inChan <-chan SqlStatement, db *sql.DB) {
+
+	for {
+		if sql, next := <-inChan; next {
+			fmt.Printf("About to execute: %v...\n", sql.sql[:100])
+			err := exec(db, sql.sql)
+			if err != nil {
+				fmt.Printf("Error on executing query #%v for %v\n", sql.no, sql.sql)
+				fmt.Println("Message: ", err)
+			} else {
+				fmt.Println("Success.. #", sql.no)
+			}
+		} else {
+			fmt.Println("No more statements")
+			return
+		}
+	}
+}
+
+/*
 func executeStatements(statementsToExecute []string) {
 	for i, sql := range statementsToExecute {
 		fmt.Printf("About to execute: %v...\n", sql[:100])
@@ -138,29 +158,39 @@ func executeStatements(statementsToExecute []string) {
 		}
 	}
 }
+*/
 
-func prepareStatements(records [][]string) []string {
-	var statementsToExecute []string
+func prepareStatements(records [][]string) chan SqlStatement {
+	//var statementsToExecute []string
 	var valuesString, sqlStatement string
-	for i, record := range records {
-		if (i+1)%maxRecords == 0 {
-			sqlStatement = INSERT + valuesString[1:len(valuesString)]
-			statementsToExecute = append(statementsToExecute, sqlStatement)
+	ch := make(chan SqlStatement)
 
-			if !silent {
-				fmt.Println("Generated: ", sqlStatement)
-				fmt.Println("--------------------------------")
+	go func() {
+		lastNo := 0
+		for i, record := range records {
+			if (i+1)%maxRecords == 0 {
+				sqlStatement = INSERT + valuesString[1:len(valuesString)]
+				//statementsToExecute = append(statementsToExecute, sqlStatement)
+				ch <- SqlStatement{lastNo, sqlStatement}
+				lastNo++
+
+				if !silent {
+					fmt.Println("Generated: ", sqlStatement)
+					fmt.Println("--------------------------------")
+				}
+				valuesString = ""
 			}
-			valuesString = ""
+			valuesString = valuesString + fmt.Sprintf(", ( '%s', '%s', '%s', '%s', '%s') ",
+				record[0][:strings.LastIndex(record[0], "-")-1], strings.Replace(record[1][1:], "_", " ", -1), record[2][1:], record[3][1:], record[4][1:])
 		}
-		valuesString = valuesString + fmt.Sprintf(", ( '%s', '%s', '%s', '%s', '%s') ",
-			record[0][:strings.LastIndex(record[0], "-")-1], strings.Replace(record[1][1:], "_", " ", -1), record[2][1:], record[3][1:], record[4][1:])
-	}
 
-	sqlStatement = INSERT + valuesString[1:len(valuesString)]
-	statementsToExecute = append(statementsToExecute, sqlStatement)
+		sqlStatement = INSERT + valuesString[1:len(valuesString)]
+		//statementsToExecute = append(statementsToExecute, sqlStatement)
+		ch <- SqlStatement{lastNo, sqlStatement}
+		close(ch)
+	}()
 
-	return statementsToExecute
+	return ch
 }
 
 func exec(db *sql.DB, cmd string) error {
