@@ -52,6 +52,7 @@ var (
 	database   string
 	cvsFile    string
 	maxRecords int
+	silent     bool
 )
 
 func init() {
@@ -61,6 +62,7 @@ func init() {
 	flagdatabase := flag.String("d", "", "`db_name`")
 	flagcvsFile := flag.String("I", "", "`CVS` file path/name")
 	flagmaxRecords := flag.Int("m", MAXRECORDS, "`How many` to insert at once")
+	flagSilent := flag.Bool("s", true, "`Silent` execution")
 
 	flag.Parse()
 
@@ -71,17 +73,20 @@ func init() {
 		database = *flagdatabase
 		cvsFile = *flagcvsFile
 		maxRecords = *flagmaxRecords
+		silent = *flagSilent
 	} else {
 		flag.Usage()
 		os.Exit(-1)
 	}
 
-	fmt.Println("userid: ", userid)
-	fmt.Println("password: ", password)
-	fmt.Println("server: ", server)
-	fmt.Println("database: ", database)
-	fmt.Println("cvsFile: ", cvsFile)
-	fmt.Println("maxRecords: ", maxRecords)
+	if !silent {
+		fmt.Println("userid: ", userid)
+		fmt.Println("password: ", password)
+		fmt.Println("server: ", server)
+		fmt.Println("database: ", database)
+		fmt.Println("cvsFile: ", cvsFile)
+		fmt.Println("maxRecords: ", maxRecords)
+	}
 
 }
 
@@ -113,8 +118,10 @@ func main() {
 			sqlStatement = INSERT + valuesString[1:len(valuesString)]
 			statementsToExecute = append(statementsToExecute, sqlStatement)
 
-			fmt.Println("Generated: ", sqlStatement)
-			fmt.Println("--------------------------------")
+			if !silent {
+				fmt.Println("Generated: ", sqlStatement)
+				fmt.Println("--------------------------------")
+			}
 			valuesString = ""
 		}
 		valuesString = valuesString + fmt.Sprintf(", ( '%s', '%s', '%s', '%s', '%s') ",
@@ -124,7 +131,9 @@ func main() {
 	sqlStatement = INSERT + valuesString[1:len(valuesString)]
 	statementsToExecute = append(statementsToExecute, sqlStatement)
 
-	fmt.Println("Generated: ", sqlStatement)
+	if !silent {
+		fmt.Println("Generated: ", sqlStatement)
+	}
 
 	for i, sql := range statementsToExecute {
 		fmt.Printf("About to execute: %v...\n", sql[:100])
