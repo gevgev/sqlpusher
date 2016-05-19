@@ -46,12 +46,12 @@ func ReadSvcFile(cvsFile string) [][]string {
 
 func main() {
 	var (
-		userid     = *flag.String("U", "adsdbroot", "login_id")
-		password   = *flag.String("P", "psw123psw.", "password")
-		server     = *flag.String("S", "clickstream.c8rzulntog2k.us-west-2.rds.amazonaws.com", "server_name[\\instance_name]")
-		database   = *flag.String("d", "Clickstream", "db_name")
-		cvsFile    = *flag.String("I", "eventsLog_05_19_2016_09_52_19.csv", "CVS file path/name")
-		maxRecords = *flag.Int("m", MAXRECORDS, "How many to insert at once")
+		userid     = *flag.String("U", "", "`login`_id")
+		password   = *flag.String("P", "", "`password`")
+		server     = *flag.String("S", "", "`server_name`[\\instance_name]")
+		database   = *flag.String("d", "", "`db_name`")
+		cvsFile    = *flag.String("I", "", "`CVS` file path/name")
+		maxRecords = *flag.Int("m", MAXRECORDS, "`How many` to insert at once")
 	)
 	flag.Parse()
 
