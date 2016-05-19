@@ -1,27 +1,65 @@
 package main
 
 import (
-	"bufio"
 	"database/sql"
+	"encoding/csv"
 	"flag"
 	"fmt"
-	"io"
+	"log"
 	"os"
+	"strings"
 	"time"
 
 	_ "github.com/denisenkom/go-mssqldb"
 )
 
+const (
+	MAXRECORDS = 100
+
+	INSERT = `INSERT INTO [Clickstream].[dbo].[clickstreamEventsLog]
+           ([timestamp]
+           ,[received]
+           ,[deviceId]
+           ,[eventCode]
+           ,[msoName])
+     VALUES 
+	`
+)
+
+func ReadSvcFile(cvsFile string) [][]string {
+	file, err := os.Open(cvsFile)
+
+	if err != nil {
+		fmt.Println("Error opening file: ", err)
+		os.Exit(-1)
+	}
+
+	r := csv.NewReader(file)
+
+	records, er := r.ReadAll()
+	if er != nil {
+		log.Fatal(er)
+	}
+
+	return records
+}
+
 func main() {
 	var (
-		userid   = flag.String("U", "adsdbroot", "login_id")
-		password = flag.String("P", "psw123psw.", "password")
-		server   = flag.String("S", "clickstream.c8rzulntog2k.us-west-2.rds.amazonaws.com", "server_name[\\instance_name]")
-		database = flag.String("d", "Clickstream", "db_name")
+		userid     = *flag.String("U", "adsdbroot", "login_id")
+		password   = *flag.String("P", "psw123psw.", "password")
+		server     = *flag.String("S", "clickstream.c8rzulntog2k.us-west-2.rds.amazonaws.com", "server_name[\\instance_name]")
+		database   = *flag.String("d", "Clickstream", "db_name")
+		cvsFile    = *flag.String("I", "eventsLog_05_19_2016_09_52_19.csv", "CVS file path/name")
+		maxRecords = *flag.Int("m", MAXRECORDS, "How many to insert at once")
 	)
 	flag.Parse()
 
-	dsn := "server=" + *server + ";user id=" + *userid + ";password=" + *password + ";database=" + *database
+	records := ReadSvcFile(cvsFile)
+
+	fmt.Printf("Read %v records total\n", len(records))
+
+	dsn := "server=" + server + ";user id=" + userid + ";password=" + password + ";database=" + database
 	db, err := sql.Open("mssql", dsn)
 	if err != nil {
 		fmt.Println("Cannot connect: ", err.Error())
@@ -33,27 +71,41 @@ func main() {
 		return
 	}
 	defer db.Close()
-	r := bufio.NewReader(os.Stdin)
-	for {
-		_, err = os.Stdout.Write([]byte("> "))
-		if err != nil {
-			fmt.Println(err)
-			return
+
+	fmt.Printf("Succesffully connected to %v - %v DB\n", server, database)
+
+	var statementsToExecute []string
+
+	var valuesString, sqlStatement string
+	for i, record := range records {
+		if (i+1)%maxRecords == 0 {
+			sqlStatement = INSERT + valuesString[1:len(valuesString)]
+			statementsToExecute = append(statementsToExecute, sqlStatement)
+
+			fmt.Println("Generated: ", sqlStatement)
+			fmt.Println("--------------------------------")
+			valuesString = ""
 		}
-		cmd, err := r.ReadString('\n')
+		valuesString = valuesString + fmt.Sprintf(", ( '%s', '%s', '%s', '%s', '%s') ",
+			record[0][:strings.LastIndex(record[0], "-")-1], strings.Replace(record[1][1:], "_", " ", -1), record[2][1:], record[3][1:], record[4][1:])
+	}
+
+	sqlStatement = INSERT + valuesString[1:len(valuesString)]
+	statementsToExecute = append(statementsToExecute, sqlStatement)
+
+	fmt.Println("Generated: ", sqlStatement)
+
+	for i, sql := range statementsToExecute {
+		fmt.Printf("About to execute: %v...\n", sql[:100])
+		err := exec(db, sql)
 		if err != nil {
-			if err == io.EOF {
-				fmt.Println()
-				return
-			}
-			fmt.Println(err)
-			return
-		}
-		err = exec(db, cmd)
-		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("Error on executing query #%v for %v\n", i, sql[:100])
+			fmt.Println("Message: ", err)
+		} else {
+			fmt.Println("Success.. #", i)
 		}
 	}
+
 }
 
 func exec(db *sql.DB, cmd string) error {
