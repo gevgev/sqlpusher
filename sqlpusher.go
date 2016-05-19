@@ -31,6 +31,7 @@ func ReadSvcFile(cvsFile string) [][]string {
 
 	if err != nil {
 		fmt.Println("Error opening file: ", err)
+		fmt.Println("File: ", cvsFile)
 		os.Exit(-1)
 	}
 
@@ -44,17 +45,47 @@ func ReadSvcFile(cvsFile string) [][]string {
 	return records
 }
 
-func main() {
-	var (
-		userid     = *flag.String("U", "", "`login`_id")
-		password   = *flag.String("P", "", "`password`")
-		server     = *flag.String("S", "", "`server_name`[\\instance_name]")
-		database   = *flag.String("d", "", "`db_name`")
-		cvsFile    = *flag.String("I", "", "`CVS` file path/name")
-		maxRecords = *flag.Int("m", MAXRECORDS, "`How many` to insert at once")
-	)
+var (
+	userid     string
+	password   string
+	server     string
+	database   string
+	cvsFile    string
+	maxRecords int
+)
+
+func init() {
+	flaguserid := flag.String("U", "", "`login`_id")
+	flagpassword := flag.String("P", "", "`password`")
+	flagserver := flag.String("S", "", "`server_name`[\\instance_name]")
+	flagdatabase := flag.String("d", "", "`db_name`")
+	flagcvsFile := flag.String("I", "", "`CVS` file path/name")
+	flagmaxRecords := flag.Int("m", MAXRECORDS, "`How many` to insert at once")
+
 	flag.Parse()
 
+	if flag.Parsed() {
+		userid = *flaguserid
+		password = *flagpassword
+		server = *flagserver
+		database = *flagdatabase
+		cvsFile = *flagcvsFile
+		maxRecords = *flagmaxRecords
+	} else {
+		flag.Usage()
+		os.Exit(-1)
+	}
+
+	fmt.Println("userid: ", userid)
+	fmt.Println("password: ", password)
+	fmt.Println("server: ", server)
+	fmt.Println("database: ", database)
+	fmt.Println("cvsFile: ", cvsFile)
+	fmt.Println("maxRecords: ", maxRecords)
+
+}
+
+func main() {
 	records := ReadSvcFile(cvsFile)
 
 	fmt.Printf("Read %v records total\n", len(records))
