@@ -88,6 +88,12 @@ func init() {
 		fmt.Println("maxRecords: ", maxRecords)
 	}
 
+	if (database == "") || (server == "") || (cvsFile == "") {
+		fmt.Println("Need server, database, and filename")
+		flag.Usage()
+		os.Exit(-1)
+	}
+
 }
 
 func main() {
@@ -110,8 +116,31 @@ func main() {
 
 	fmt.Printf("Succesffully connected to %v - %v DB\n", server, database)
 
-	var statementsToExecute []string
+	statementsToExecute := prepareStatements(records)
 
+	if !silent {
+		fmt.Println("Generated: ", sqlStatement)
+	}
+
+	executeStatements(statementsToExecute)
+
+}
+
+func executeStatements(statementsToExecute []string) {
+	for i, sql := range statementsToExecute {
+		fmt.Printf("About to execute: %v...\n", sql[:100])
+		err := exec(db, sql)
+		if err != nil {
+			fmt.Printf("Error on executing query #%v for %v\n", i, sql[:100])
+			fmt.Println("Message: ", err)
+		} else {
+			fmt.Println("Success.. #", i)
+		}
+	}
+}
+
+func prepareStatements(records [][]string) []string {
+	var statementsToExecute []string
 	var valuesString, sqlStatement string
 	for i, record := range records {
 		if (i+1)%maxRecords == 0 {
@@ -131,21 +160,7 @@ func main() {
 	sqlStatement = INSERT + valuesString[1:len(valuesString)]
 	statementsToExecute = append(statementsToExecute, sqlStatement)
 
-	if !silent {
-		fmt.Println("Generated: ", sqlStatement)
-	}
-
-	for i, sql := range statementsToExecute {
-		fmt.Printf("About to execute: %v...\n", sql[:100])
-		err := exec(db, sql)
-		if err != nil {
-			fmt.Printf("Error on executing query #%v for %v\n", i, sql[:100])
-			fmt.Println("Message: ", err)
-		} else {
-			fmt.Println("Success.. #", i)
-		}
-	}
-
+	return statementsToExecute
 }
 
 func exec(db *sql.DB, cmd string) error {
