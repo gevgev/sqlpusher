@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	MAXRECORDS = 100
+	MAXRECORDS = 1000
 
 	INSERT = `INSERT INTO [Clickstream].[dbo].[clickstreamEventsLog]
            ([timestamp]
@@ -123,23 +123,29 @@ func main() {
 
 	executeStatements(prepareStatements(records), db)
 
-	fmt.Println("Done")
+	fmt.Println("Completed processing: ", cvsFile)
 }
 
 func executeStatements(inChan <-chan SqlStatement, db *sql.DB) {
 
 	for {
 		if sql, next := <-inChan; next {
-			fmt.Printf("About to execute: %v...\n", sql.sql[:100])
+			if !silent {
+				fmt.Printf("About to execute: %v...\n", sql.sql[:100])
+			}
 			err := exec(db, sql.sql)
 			if err != nil {
 				fmt.Printf("Error on executing query #%v for %v\n", sql.no, sql.sql)
 				fmt.Println("Message: ", err)
 			} else {
-				fmt.Println("Success.. #", sql.no)
+				if !silent {
+					fmt.Println("Success.. #", sql.no)
+				}
 			}
 		} else {
-			fmt.Println("No more statements")
+			if !silent {
+				fmt.Println("No more statements for: ", cvsFile)
+			}
 			return
 		}
 	}
