@@ -151,21 +151,6 @@ func executeStatements(inChan <-chan SqlStatement, db *sql.DB) {
 	}
 }
 
-/*
-func executeStatements(statementsToExecute []string) {
-	for i, sql := range statementsToExecute {
-		fmt.Printf("About to execute: %v...\n", sql[:100])
-		err := exec(db, sql)
-		if err != nil {
-			fmt.Printf("Error on executing query #%v for %v\n", i, sql[:100])
-			fmt.Println("Message: ", err)
-		} else {
-			fmt.Println("Success.. #", i)
-		}
-	}
-}
-*/
-
 func prepareStatements(records [][]string) chan SqlStatement {
 	//var statementsToExecute []string
 	var valuesString, sqlStatement string
@@ -187,7 +172,8 @@ func prepareStatements(records [][]string) chan SqlStatement {
 				valuesString = ""
 			}
 			valuesString = valuesString + fmt.Sprintf(", ( '%s', '%s', '%s', '%s', '%s') ",
-				record[0][:strings.LastIndex(record[0], "-")-1], strings.Replace(record[1][1:], "_", " ", -1), record[2][1:], record[3][1:], record[4][1:])
+				// 2016-05-10 17:14:30
+				record[0][:19], strings.Replace(record[1][1:], "_", " ", -1), record[2][1:], record[3][1:], record[4][1:])
 		}
 
 		sqlStatement = INSERT + valuesString[1:len(valuesString)]
