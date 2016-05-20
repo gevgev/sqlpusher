@@ -110,12 +110,12 @@ func main() {
 	db, err := sql.Open("mssql", dsn)
 	if err != nil {
 		fmt.Println("Cannot connect: ", err.Error())
-		return
+		os.Exit(-1)
 	}
 	err = db.Ping()
 	if err != nil {
 		fmt.Println("Cannot connect: ", err.Error())
-		return
+		os.Exit(-1)
 	}
 	defer db.Close()
 
