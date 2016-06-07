@@ -16,7 +16,7 @@ import (
 const (
 	MAXRECORDS = 1000
 
-	INSERT = `INSERT INTO [Clickstream].[dbo].[clickstreamEventsLog]
+	INSERT = `INSERT INTO [Clickstream].[dbo].[%s]
            ([timestamp]
            ,[received]
            ,[deviceId]
@@ -50,6 +50,7 @@ var (
 	password   string
 	server     string
 	database   string
+	table      string
 	cvsFile    string
 	maxRecords int
 	silent     bool
@@ -60,6 +61,7 @@ func init() {
 	flagpassword := flag.String("P", "", "`password`")
 	flagserver := flag.String("S", "", "`server_name`[\\instance_name]")
 	flagdatabase := flag.String("d", "", "`db_name`")
+	flagtableName := flag.String("t", "clickstreamEventsLog", "`Table` name")
 	flagcvsFile := flag.String("I", "", "`CVS` file path/name")
 	flagmaxRecords := flag.Int("m", MAXRECORDS, "`How many` to insert at once")
 	flagSilent := flag.Bool("s", true, "`Silent` execution")
@@ -71,6 +73,7 @@ func init() {
 		password = *flagpassword
 		server = *flagserver
 		database = *flagdatabase
+		table = *flagtableName
 		cvsFile = *flagcvsFile
 		maxRecords = *flagmaxRecords
 		silent = *flagSilent
@@ -156,11 +159,13 @@ func prepareStatements(records [][]string) chan SqlStatement {
 	var valuesString, sqlStatement string
 	ch := make(chan SqlStatement)
 
+	headSql := fmt.Sprintf(INSERT, table)
+
 	go func() {
 		lastNo := 0
 		for i, record := range records {
 			if (i+1)%maxRecords == 0 {
-				sqlStatement = INSERT + valuesString[1:len(valuesString)]
+				sqlStatement = headSql + valuesString[1:len(valuesString)]
 				//statementsToExecute = append(statementsToExecute, sqlStatement)
 				ch <- SqlStatement{lastNo, sqlStatement}
 				lastNo++
@@ -176,7 +181,7 @@ func prepareStatements(records [][]string) chan SqlStatement {
 				record[0][:19], strings.Replace(record[1][1:], "_", " ", -1), record[2][1:], record[3][1:], record[4][1:])
 		}
 
-		sqlStatement = INSERT + valuesString[1:len(valuesString)]
+		sqlStatement = headSql + valuesString[1:len(valuesString)]
 		//statementsToExecute = append(statementsToExecute, sqlStatement)
 		ch <- SqlStatement{lastNo, sqlStatement}
 		close(ch)
